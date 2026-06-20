@@ -5,6 +5,37 @@ from core.scanner import Scanner
 
 def main():
 
+    banner = r"""
+┌──────────────────── TUSK ACT 1 ────────────────────┐
+│                                                     │
+│          ★══════◎══════★                           │
+│                                                     │
+│    ________  _______ __ __                         │
+│   /_  __/ / / / ___// //_/                         │
+│    / / / / / /\__ \/ ,<                            │
+│   / / / /_/ /___/ / /| |                           │
+│  /_/  \____//____/_/ |_|                           │
+│                                                     │
+│             「Infinite Rotation」                   │
+│                                                     │
+│  User       : TurkiTheCreator                       │
+│  Version    : 0.1                                   │
+│                                                     │
+│  Stand Abilities                                   │
+│   ★ Port Scanner                                   │
+│   ★ Header Analysis                                │
+│   ★ Technology Detection                           │
+│   ★ CVE Lookup                                     │
+│   ★ SSL Inspection                                 │
+│   ★ Banner Grabbing                                │
+│                                                     │
+│  Status : READY                                    │
+│                                                     │
+│     CHUMIMI~IN                                      │
+│                                                     │
+└─────────────────────────────────────────────────────┘
+"""
+
     parser = argparse.ArgumentParser(
         prog="tusk",
         description="Tusk - Lightweight vulnerability scanner",
@@ -27,6 +58,7 @@ Examples:
 
     parser.add_argument(
         "command",
+        nargs="?",
         choices=["scan"],
         help="Command to execute"
     )
@@ -34,7 +66,6 @@ Examples:
     parser.add_argument(
         "-u",
         "--url",
-        required=True,
         help="Target host"
     )
 
@@ -72,50 +103,19 @@ Examples:
 
     args = parser.parse_args()
 
-    banner = r"""
-┌──────────────────── TUSK ACT 4 ────────────────────┐
-│                                                     │
-│          ★══════◎══════★                           │
-│                                                     │
-│    ________  _______ __ __                         │
-│   /_  __/ / / / ___// //_/                         │
-│    / / / / / /\__ \/ ,<                            │
-│   / / / /_/ /___/ / /| |                           │
-│  /_/  \____//____/_/ |_|                           │
-│                                                     │
-│             「Infinite Rotation」                   │
-│                                                     │
-│  User       : TurkiTheCreator                       │
-│  Version    : 0.1.0                                │
-│                                                     │
-│  Stand Abilities                                   │
-│   ★ Port Scanner                                   │
-│   ★ Header Analysis                                │
-│   ★ Technology Detection                           │
-│   ★ CVE Lookup                                     │
-│   ★ SSL Inspection                                 │
-│   ★ Banner Grabbing                                │
-│                                                     │
-│  Status : READY                                    │
-│                                                     │
-│     CHUMIMI~IN                                      │
-│                                                     │
-└─────────────────────────────────────────────────────┘
-"""
-
     print(banner)
 
-    target = Target(
-        args.url
-    )
+    if args.command != "scan" or not args.url:
+        parser.print_help()
+        return
+
+    target = Target(args.url)
 
     scanner = Scanner(
         threads=args.threads
     )
 
-    scanner.run(
-        target
-    )
+    scanner.run(target)
 
     print()
     print("=" * 57)
@@ -159,10 +159,7 @@ Examples:
     print("\n[CPE]\n")
 
     for port, cpe in target.cpes.items():
-
-        print(
-            f"{port}/tcp -> {cpe}"
-        )
+        print(f"{port}/tcp -> {cpe}")
 
     print()
     print("-" * 57)
@@ -183,22 +180,12 @@ Examples:
         for vuln in vulns[:5]:
 
             print(vuln["id"])
-
-            print(
-                f"Severity : {vuln['severity']}"
-            )
-
-            print(
-                f"CVSS : {vuln['cvss']}"
-            )
-
+            print(f"Severity : {vuln['severity']}")
+            print(f"CVSS : {vuln['cvss']}")
             print()
 
     if not found:
-
-        print(
-            "No vulnerabilities found."
-        )
+        print("No vulnerabilities found.")
 
     print("-" * 57)
 
