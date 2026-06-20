@@ -1,0 +1,7 @@
+setup.py
+Tusk.egg-info/PKG-INFO
+Tusk.egg-info/SOURCES.txt
+Tusk.egg-info/dependency_links.txt
+Tusk.egg-info/entry_points.txt
+Tusk.egg-info/requires.txt
+Tusk.egg-info/top_level.txt
