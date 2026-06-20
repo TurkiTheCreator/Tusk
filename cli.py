@@ -2,6 +2,7 @@ import argparse
 from core.target import Target
 from core.scanner import Scanner
 
+
 def main():
 
     parser = argparse.ArgumentParser(
@@ -70,6 +71,39 @@ Examples:
     )
 
     args = parser.parse_args()
+
+    banner = r"""
+┌──────────────────── TUSK ACT 4 ────────────────────┐
+│                                                     │
+│          ★══════◎══════★                           │
+│                                                     │
+│    ________  _______ __ __                         │
+│   /_  __/ / / / ___// //_/                         │
+│    / / / / / /\__ \/ ,<                            │
+│   / / / /_/ /___/ / /| |                           │
+│  /_/  \____//____/_/ |_|                           │
+│                                                     │
+│             「Infinite Rotation」                   │
+│                                                     │
+│  User       : TurkiTheCreator                       │
+│  Version    : 0.1.0                                │
+│                                                     │
+│  Stand Abilities                                   │
+│   ★ Port Scanner                                   │
+│   ★ Header Analysis                                │
+│   ★ Technology Detection                           │
+│   ★ CVE Lookup                                     │
+│   ★ SSL Inspection                                 │
+│   ★ Banner Grabbing                                │
+│                                                     │
+│  Status : READY                                    │
+│                                                     │
+│     CHUMIMI~IN                                      │
+│                                                     │
+└─────────────────────────────────────────────────────┘
+"""
+
+    print(banner)
 
     target = Target(
         args.url
@@ -171,4 +205,3 @@ Examples:
 
 if __name__ == "__main__":
     main()
-
