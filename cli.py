@@ -1,9 +1,14 @@
 import argparse
+
+from rich.console import Console
+
 from core.target import Target
 from core.scanner import Scanner
 
+console = Console()
 
-def main():
+
+def show_banner():
 
     banner = r"""
 ┌──────────────────── TUSK ACT 1 ────────────────────┐
@@ -19,7 +24,7 @@ def main():
 │             「Infinite Rotation」                   │
 │                                                     │
 │  User       : TurkiTheCreator                       │
-│  Version    : 0.1                                   │
+│  Version    : 0.1                                  │
 │                                                     │
 │  Stand Abilities                                   │
 │   ★ Port Scanner                                   │
@@ -35,6 +40,11 @@ def main():
 │                                                     │
 └─────────────────────────────────────────────────────┘
 """
+
+    print(banner)
+
+
+def main():
 
     parser = argparse.ArgumentParser(
         prog="tusk",
@@ -103,92 +113,144 @@ Examples:
 
     args = parser.parse_args()
 
-    print(banner)
+    #
+    # Home screen
+    #
+    if args.command is None:
 
-    if args.command != "scan" or not args.url:
+        show_banner()
+
         parser.print_help()
+
         return
 
-    target = Target(args.url)
+    #
+    # Scan command
+    #
+    if args.command == "scan":
 
-    scanner = Scanner(
-        threads=args.threads
-    )
+        if not args.url:
 
-    scanner.run(target)
+            parser.error(
+                "scan requires -u/--url"
+            )
 
-    print()
-    print("=" * 57)
-    print("Tusk v0.1")
-    print("=" * 57)
+        print("\n「TUSK ACT 1」")
 
-    print()
-    print(f"[INF] Target: {target.host}")
-    print()
-
-    print("PORT      STATE SERVICE VERSION")
-    print()
-
-    for port in target.open_ports:
-
-        service = target.services.get(
-            port,
-            "unknown"
+        target = Target(
+            args.url
         )
 
-        info = target.versions.get(
-            port,
-            {
-                "product": "unknown",
-                "version": "unknown"
-            }
+        scanner = Scanner(
+            threads=args.threads
         )
 
-        product = info["product"]
-        version = info["version"]
+        with console.status(
+            "[cyan]Rotating...[/cyan]",
+            spinner="dots"
+        ):
+
+            scanner.run(
+                target
+            )
+
+        print()
+        print("=" * 57)
+        print("Tusk v0.1")
+        print("=" * 57)
+
+        print()
+        print(f"[INF] Target: {target.host}")
+        print()
 
         print(
-            f"{port}/tcp    open  "
-            f"{service:<7} "
-            f"{product} {version}"
+            "PORT      STATE SERVICE VERSION"
         )
 
-    print()
-    print("-" * 57)
+        print()
 
-    print("\n[CPE]\n")
+        for port in target.open_ports:
 
-    for port, cpe in target.cpes.items():
-        print(f"{port}/tcp -> {cpe}")
+            service = target.services.get(
+                port,
+                "unknown"
+            )
 
-    print()
-    print("-" * 57)
+            info = target.versions.get(
+                port,
+                {
+                    "product": "unknown",
+                    "version": "unknown"
+                }
+            )
 
-    print("\n[VULN]\n")
+            product = info["product"]
+            version = info["version"]
 
-    found = False
+            print(
+                f"{port}/tcp    open  "
+                f"{service:<7} "
+                f"{product} {version}"
+            )
 
-    for port, vulns in target.findings.items():
+        print()
+        print("-" * 57)
 
-        if not vulns:
-            continue
+        print("\n[CPE]\n")
 
-        found = True
+        for port, cpe in target.cpes.items():
 
-        print(f"{port}/tcp\n")
+            print(
+                f"{port}/tcp -> {cpe}"
+            )
 
-        for vuln in vulns[:5]:
+        print()
+        print("-" * 57)
 
-            print(vuln["id"])
-            print(f"Severity : {vuln['severity']}")
-            print(f"CVSS : {vuln['cvss']}")
-            print()
+        print("\n[VULN]\n")
 
-    if not found:
-        print("No vulnerabilities found.")
+        found = False
 
-    print("-" * 57)
+        for port, vulns in target.findings.items():
+
+            if not vulns:
+
+                continue
+
+            found = True
+
+            print(
+                f"{port}/tcp\n"
+            )
+
+            for vuln in vulns[:5]:
+
+                print(
+                    vuln["id"]
+                )
+
+                print(
+                    f"Severity : {vuln['severity']}"
+                )
+
+                print(
+                    f"CVSS : {vuln['cvss']}"
+                )
+
+                print()
+
+        if not found:
+
+            print(
+                "No vulnerabilities found."
+            )
+
+        print(
+            "-" * 57
+        )
 
 
 if __name__ == "__main__":
+
     main()
+
