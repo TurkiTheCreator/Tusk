@@ -1,8 +1,6 @@
 import argparse
-
 from core.target import Target
 from core.scanner import Scanner
-
 
 def main():
 
