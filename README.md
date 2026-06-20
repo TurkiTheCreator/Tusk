@@ -20,6 +20,8 @@ A lightweight vulnerability scanner written in Python.
 
 Tusk is designed to perform fast reconnaissance and vulnerability assessment through port scanning, service detection, version fingerprinting, CPE generation, and CVE correlation.
 
+The name Tusk was inspired by Tusk, the Stand of Johnny Joestar from JoJo's Bizarre Adventure: Steel Ball Run. The name also felt fitting for the project itself, as tusks are used to dig and uncover things—much like the tool is designed to dig through and gather information.
+
 ---
 
 # Features
@@ -136,13 +138,13 @@ tusk scan -u example.com --full -o output.json
 Command:
 
 ```bash
-tusk scan -u scanme.nmap.org
+tusk scan -u  example.com
 ```
 
 Example output:
 
 ```text
-[INF] Target: scanme.nmap.org
+[INF] Target: example.com
 
 PORT      STATE SERVICE VERSION
 
@@ -162,32 +164,6 @@ PORT      STATE SERVICE VERSION
 
 No vulnerabilities found.
 ```
-
----
-
-# Demonstration Targets
-
-### Official Nmap Test Host
-
-```bash
-tusk scan -u scanme.nmap.org
-```
-
-Safe and publicly available for testing.
-
-### Example Domain
-
-```bash
-tusk scan -u example.com
-```
-
-### Metasploitable2
-
-```bash
-tusk scan -u 192.168.x.x
-```
-
-Useful for demonstrating CVE detection.
 
 ---
 
@@ -318,8 +294,6 @@ Unauthorized use against systems without permission is prohibited.
 ---
 
 # Author
-
-**Turki Hufais**
 
 GitHub:
 
