@@ -1,10 +1,11 @@
 import requests
+from requests.exceptions import Timeout, ConnectionError as ReqConnectionError, RequestException
+
 
 
 class CVELookup:
 
     def lookup(self, cpe):
-
         url = "https://services.nvd.nist.gov/rest/json/cves/2.0"
 
         params = {
@@ -12,12 +13,13 @@ class CVELookup:
         }
 
         try:
-
             response = requests.get(
                 url,
                 params=params,
                 timeout=10
             )
+
+            response.raise_for_status()
 
             data = response.json()
 
@@ -54,8 +56,14 @@ class CVELookup:
 
             return vulnerabilities
 
+        except Timeout:
+            # Network timeout should not fail the whole scan.
+            return []
+        except ReqConnectionError:
+            return []
+        except RequestException:
+            return []
         except Exception:
-
             return []
 
 
@@ -70,4 +78,5 @@ class CVELookup:
             )
 
         return results
+
 

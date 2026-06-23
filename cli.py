@@ -4,8 +4,12 @@ from rich.console import Console
 
 from core.target import Target
 from core.scanner import Scanner
+from core.utils import resolve_host
+from core.logger import Logger
+
 
 console = Console()
+
 
 
 def show_banner():
@@ -26,7 +30,7 @@ def show_banner():
 │  User       : TurkiTheCreator                       │
 │  Version    : 0.1                                  │
 │                                                     │
-│  Stand Abilities                                   │
+│                                                     │
 │   ★ Port Scanner                                   │
 │   ★ Header Analysis                                │
 │   ★ Technology Detection                           │
@@ -145,14 +149,31 @@ Examples:
             threads=args.threads
         )
 
-        with console.status(
-            "[cyan]Rotating...[/cyan]",
-            spinner="dots"
-        ):
+        # Validate host (DNS) early to avoid ugly tracebacks later.
+        resolved = resolve_host(args.url)
+        if resolved is None:
+            Logger.error(f"DNS lookup failed for: {args.url}")
+            return
 
-            scanner.run(
-                target
-            )
+        try:
+            with console.status(
+                "[cyan]Rotating...[/cyan]",
+                spinner="dots"
+            ):
+
+                scanner.run(
+                    target
+                )
+        except KeyboardInterrupt:
+            Logger.warning("Scan interrupted (Ctrl+C).")
+            return
+        except ValueError as e:
+            Logger.error(str(e))
+            return
+        except Exception as e:
+            Logger.error(f"Scan failed: {e}")
+            return
+
 
         print()
         print("=" * 57)
