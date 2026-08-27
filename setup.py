@@ -4,12 +4,15 @@ setup(
     name="Tusk",
     version="0.1",
     description="Lightweight vulnerability scanner",
+    python_requires=">=3.11",
 
     py_modules=["cli"],
     packages=find_packages(),
 
     install_requires=[
-        "requests"
+        "requests",
+        "rich",
+        "pyyaml"
     ],
 
     entry_points={

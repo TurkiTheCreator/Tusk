@@ -1,12 +1,23 @@
 # TODO
 
-## Priority 1 — Error Handling
+## Phase 0 — Stabilize the Core
 
-- [ ] 1) Wrap `scanner.run()` and printing in `cli.py` with clean error handling (no tracebacks)
-- [ ] 2) Add `KeyboardInterrupt` handling (Ctrl+C) in `cli.py`
-- [ ] 3) Validate DNS resolution in `cli.py` using `core.utils.resolve_host`
-- [ ] 4) Add defensive exception handling in `core/scanner.py`
-- [ ] 5) Add port validation + defensive socket handling in `modules/ports.py`
-- [ ] 6) Improve network error handling cleanliness in `modules/cve.py` (specific requests exceptions)
-- [ ] 7) Re-run manual verification: `tusk scan invalidhost.com` and Ctrl+C
+- [ ] Replace IPv4-only socket implementation (discovery/ports.py, discovery/banners.py)
+- [ ] Add IPv6 and dual-stack support with getaddrinfo()
+- [ ] Fix HTTPS certificate verification (discovery/analyzers/http_analyzer.py)
+- [ ] Add --insecure and --verbose CLI options
+- [ ] Reject unknown product/version in CPE generation
+- [ ] Add stage-aware structured scanner errors
+- [ ] Implement partial result preservation
+- [ ] Add test coverage for Phase 0 changes
 
+## Priority 2 — Performance
+
+- [X]  Improve thread management.
+- [X]  Reduce socket timeout.
+- [X]  Optimize port scanning.
+
+## Priority 3 — Parallelization
+
+- [ ]  Parallel banner grabbing.
+- [ ]  Parallel version detection.

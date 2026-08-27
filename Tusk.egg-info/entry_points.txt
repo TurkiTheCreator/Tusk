@@ -1,0 +1,2 @@
+[console_scripts]
+tusk = cli:main

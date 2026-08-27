@@ -1,0 +1,8 @@
+id: openssh-version-detected
+description: >
+  Detects the OpenSSH product and version from an SSH banner evidence
+  value (e.g. "SSH-2.0-OpenSSH_8.9p1 Ubuntu-3ubuntu0.4").
+match:
+  type: banner
+  pattern: 'OpenSSH[_/ ]([\d]+\.[\d]+(?:p\d+)?)'
+confidence: 0.9

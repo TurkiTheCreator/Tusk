@@ -20,5 +20,8 @@ class Target:
         # Milestone 6
         self.cves = {}
 
-        # Final findings
-        self.findings = []
+        # Final findings: Dict[int, List[core.models.Finding]]
+        self.findings = {}
+
+        # Errors encountered during scan: List[ScanError]
+        self.errors = []

@@ -1,0 +1,9 @@
+id: missing-content-security-policy
+description: >
+  Flags a missing Content-Security-Policy response header on an HTTP/HTTPS
+  service, which leaves the site without first-line defense against XSS
+  and data-injection attacks.
+match:
+  type: header
+  pattern: '^Content-Security-Policy:\s*MISSING$'
+confidence: 0.8
