@@ -1,12 +1,13 @@
 """HTTP security header analyzer.
 
-Issues a real HTTP GET to port 80 and an HTTPS GET to port 443 (whichever
-are open), captures the response headers as Evidence, flags missing
+Issues a real HTTP or HTTPS GET to every open port that looks like a web
+server, captures the response headers as Evidence, flags missing
 security headers, and runs everything through the rule engine.
 """
 
 from __future__ import annotations
 
+from pathlib import Path
 from typing import Dict, List
 
 import requests
@@ -16,8 +17,12 @@ from core.engine.evidence import Evidence
 from core.engine.rule_engine import Match, RuleEngine
 from core.logger import Logger
 
-# Fingerprinting should not fail because of an untrusted/self-signed cert.
-urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
+# <root>/discovery/analyzers/http_analyzer.py -> <root>/rulesets/default
+DEFAULT_RULESET = Path(__file__).resolve().parents[2] / "rulesets" / "default"
+
+# Ports probed even when the banner grab returned nothing.
+HTTP_PORTS = {80, 81, 443, 3000, 5000, 8000, 8008, 8080, 8081, 8443, 8888}
+HTTPS_FIRST = {443, 8443}
 
 SECURITY_HEADERS = [
     "Strict-Transport-Security",
@@ -32,9 +37,9 @@ SECURITY_HEADERS = [
 class HttpAnalyzer:
     """Probes port 80/443, turns response headers into Evidence, and scores them."""
 
-    def __init__(self, timeout: float = 10, ruleset_path: str = "rulesets/default", insecure: bool = False):
+    def __init__(self, timeout: float = 10, ruleset_path: str = "", insecure: bool = False):
         self.timeout = timeout
-        self.ruleset_path = ruleset_path
+        self.ruleset_path = ruleset_path or DEFAULT_RULESET
         self.insecure = insecure
 
     def _collect_evidence(self, host: str, port: int, scheme: str) -> List[Evidence]:
@@ -64,6 +69,8 @@ class HttpAnalyzer:
             )
 
         for name in SECURITY_HEADERS:
+            if name == "Strict-Transport-Security" and scheme != "https":
+                continue  # HSTS is only meaningful over HTTPS
             if name not in headers:
                 evidence.append(
                     Evidence(
@@ -76,18 +83,24 @@ class HttpAnalyzer:
 
         return evidence
 
-    def analyze(self, host: str, open_ports: List[int]) -> Dict[str, list]:
-        """Probe open_ports 80/443 and return {"evidence": [...], "matches": [...]}."""
+    def analyze(self, host: str, open_ports: List[int], banners=None) -> Dict[str, list]:
+        """Probe every open port that looks like HTTP(S); return {"evidence", "matches"}."""
+        banners = banners or {}
         evidence: List[Evidence] = []
 
         if self.insecure:
             Logger.warning("HTTPS certificate verification is disabled (--insecure)")
+            urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
-        if 80 in open_ports:
-            evidence.extend(self._collect_evidence(host, 80, "http"))
-
-        if 443 in open_ports:
-            evidence.extend(self._collect_evidence(host, 443, "https"))
+        for port in open_ports:
+            if port not in HTTP_PORTS and not banners.get(port, "").startswith("HTTP/"):
+                continue
+            schemes = ("https", "http") if port in HTTPS_FIRST else ("http", "https")
+            for scheme in schemes:
+                found = self._collect_evidence(host, port, scheme)
+                if found:
+                    evidence.extend(found)
+                    break
 
         matches: List[Match] = []
         if evidence:

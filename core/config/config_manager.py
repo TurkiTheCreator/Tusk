@@ -33,7 +33,7 @@ DEFAULTS: Dict[str, Any] = {
     "cve_timeout": 10.0,
     "cve_workers": 10,
     "nvd_api_key": "",
-    "ruleset_path": "rulesets/default",
+    "ruleset_path": "",  # empty = ruleset bundled with Tusk
 }
 
 _TYPE_CASTERS = {

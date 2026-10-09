@@ -8,6 +8,7 @@ setup(
 
     py_modules=["cli"],
     packages=find_packages(),
+    package_data={"rulesets": ["default/*.yaml"]},
 
     install_requires=[
         "requests",

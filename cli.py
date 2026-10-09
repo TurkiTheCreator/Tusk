@@ -1,5 +1,7 @@
 import argparse
 import json
+import sys
+from urllib.parse import urlparse
 
 from rich.console import Console
 
@@ -11,10 +13,39 @@ from core.config.config_manager import ConfigManager, write_default_config
 from scoring.cvss import calculate as calculate_cvss, CVSSError
 from discovery.ports import TOP_PORTS
 from discovery.analyzers.http_analyzer import HttpAnalyzer
+from core.engine.rule_engine import RuleEngineError
 
 
 console = Console()
 
+
+
+def parse_ports(spec):
+    """'1-1024,8080' -> sorted unique list; raises ValueError on bad input."""
+    ports = set()
+    for part in spec.split(","):
+        part = part.strip()
+        if not part:
+            continue
+        if "-" in part:
+            lo, hi = (int(x) for x in part.split("-", 1))
+            if lo > hi:
+                raise ValueError(f"reversed range: {part}")
+            ports.update(range(lo, hi + 1))
+        else:
+            ports.add(int(part))
+    if not ports or min(ports) < 1 or max(ports) > 65535:
+        raise ValueError("ports must be within 1-65535")
+    return sorted(ports)
+
+
+def parse_target(raw):
+    """'https://host:8443/x' -> ('host', 8443); bare 'host' -> ('host', None)."""
+    raw = raw.strip()
+    if "://" in raw:
+        parsed = urlparse(raw)
+        return parsed.hostname, parsed.port
+    return raw, None
 
 
 def show_banner():
@@ -67,7 +98,7 @@ Examples:
 
   tusk scan -u example.com -p 80,443
 
-  tusk scan -u example.com --top-ports 1000
+  tusk scan -u example.com --top-ports 100
 
   tusk scan -u example.com --full
 
@@ -92,7 +123,9 @@ Examples:
     parser.add_argument(
         "-u",
         "--url",
-        help="Target host"
+        "--target",
+        dest="url",
+        help="Target host or URL (e.g. example.com, ::1, https://host:8443/)"
     )
 
     # Note: these default to None so the layered ConfigManager (defaults ->
@@ -138,13 +171,13 @@ Examples:
     parser.add_argument(
         "-p",
         "--ports",
-        help="Custom ports (example: 80,443)"
+        help="Custom ports (example: 80,443 or 1-1024,8080)"
     )
 
     parser.add_argument(
         "--top-ports",
         type=int,
-        help="Scan top N ports"
+        help=f"Scan top N ports (1-{len(TOP_PORTS)})"
     )
 
     parser.add_argument(
@@ -168,7 +201,7 @@ Examples:
     parser.add_argument(
         "--http-headers",
         action="store_true",
-        help="Analyze HTTP/HTTPS security headers on ports 80/443"
+        help="Analyze HTTP/HTTPS security headers on every HTTP(S) port found"
     )
 
     parser.add_argument(
@@ -195,7 +228,7 @@ Examples:
 
         parser.print_help()
 
-        return
+        return 0
 
     #
     # Config command
@@ -212,7 +245,7 @@ Examples:
 
         Logger.success(f"Default config written to {path}")
 
-        return
+        return 0
 
     #
     # Scan command
@@ -227,26 +260,26 @@ Examples:
 
         print("\n「TUSK ACT 1」")
 
-        target = Target(
-            args.url
-        )
+        host, url_port = parse_target(args.url)
+        if not host:
+            parser.error(f"Could not read a host from: {args.url}")
+
+        target = Target(host)
 
         # Resolve which ports to scan: --full > --top-ports > -p/--ports > default.
         if args.full:
             target.ports = range(1, 65536)
         elif args.top_ports is not None:
+            if not 1 <= args.top_ports <= len(TOP_PORTS):
+                parser.error(f"--top-ports must be between 1 and {len(TOP_PORTS)}")
             target.ports = TOP_PORTS[:args.top_ports]
         elif args.ports:
             try:
-                target.ports = [
-                    int(p.strip())
-                    for p in args.ports.split(",")
-                    if p.strip()
-                ]
-            except ValueError:
-                parser.error(
-                    f"Invalid value for -p/--ports: {args.ports}"
-                )
+                target.ports = parse_ports(args.ports)
+            except ValueError as e:
+                parser.error(f"Invalid value for -p/--ports: {e}")
+        elif url_port:
+            target.ports = [url_port]
 
         # Layered config: defaults -> TOML file -> env vars -> these CLI flags.
         config = ConfigManager(
@@ -272,10 +305,10 @@ Examples:
 
 
         # Validate host (DNS) early to avoid ugly tracebacks later.
-        resolved = resolve_host(args.url)
+        resolved = resolve_host(target.host)
         if resolved is None:
-            Logger.error(f"DNS lookup failed for: {args.url}")
-            return
+            Logger.error(f"DNS lookup failed for: {target.host}")
+            return 2
 
         try:
             with console.status(
@@ -288,13 +321,16 @@ Examples:
                 )
         except KeyboardInterrupt:
             Logger.warning("Scan interrupted (Ctrl+C).")
-            return
+            return 130
         except ValueError as e:
             Logger.error(str(e))
-            return
+            return 2
         except Exception as e:
             Logger.error(f"Scan failed: {e}")
-            return
+            return 3
+
+        if any(e.stage == "port_discovery" for e in target.errors):
+            return 3  # already logged by the scanner; don't print an empty report
 
 
         print()
@@ -416,20 +452,25 @@ Examples:
 
             print("\n[HTTP HEADERS]\n")
 
-            analyzer = HttpAnalyzer(
-                timeout=args.cve_timeout if args.cve_timeout else 10,
-                ruleset_path=config.get("ruleset_path"),
-                insecure=args.insecure,
-            )
+            try:
+                analyzer = HttpAnalyzer(
+                    timeout=config.get("cve_timeout"),
+                    ruleset_path=config.get("ruleset_path"),
+                    insecure=args.insecure,
+                )
 
-            http_headers_result = analyzer.analyze(
-                target.host,
-                target.open_ports,
-            )
+                http_headers_result = analyzer.analyze(
+                    target.host,
+                    target.open_ports,
+                    target.banners,
+                )
+            except RuleEngineError as e:
+                Logger.error(f"Ruleset error: {e}")
+                return 2
 
             if not http_headers_result["evidence"]:
 
-                print("No HTTP/HTTPS service responded on port 80/443.")
+                print("No HTTP/HTTPS service responded.")
 
             else:
 
@@ -491,9 +532,16 @@ Examples:
                 Logger.success(f"Output written to {args.output}")
             except OSError as e:
                 Logger.error(f"Failed to write output file: {e}")
+                return 3
+
+        if target.errors:
+            return 3
+        if any(target.findings.values()):
+            return 1
+        return 0
 
 
 if __name__ == "__main__":
 
-    main()
+    sys.exit(main())
 
