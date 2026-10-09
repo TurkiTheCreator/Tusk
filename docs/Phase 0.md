@@ -457,7 +457,27 @@ esac
 
 ---
 
-## Testing recipes
+## Automated tests
+
+Run from the repo root. They use only the standard library (`unittest`), need no network, and take about 2 seconds.
+
+```bash
+python -m unittest discover -s tests -t .
+```
+
+| File | Covers |
+|---|---|
+| `tests/test_cpe.py` | NVD names, OpenSSH `8.9p1` → `8.9:p1`, unknown parts, escaping |
+| `tests/test_cve.py` | success caching, 403/429/503 retries, timeouts not cached, `Retry-After`, API key, rate limiter, CVSS v4/v3.1/v3.0/v2 fallback |
+| `tests/test_network.py` | IPv4 and IPv6 resolve, one DNS lookup per host, banners on non-standard ports (SSH, HTTP, IPv6), closed port is silent, no `AF_INET` left |
+| `tests/test_cli.py` | `parse_ports`, `parse_target`, every exit code, "CVE lookup failed" message, URL target, `--target` |
+| `tests/test_http_analyzer.py` | HSTS only on HTTPS, every web port probed, scheme fallback, urllib3 not silenced, package-relative ruleset, one-line ruleset error, packaging files |
+| `tests/test_scanner.py` | failed NVD lookup becomes a `ScanError`, API key reaches the lookup, `-v` sets the logger |
+
+> [!note]
+> Tests start throwaway local sockets on `127.0.0.1` and `::1`. The IPv6 tests skip themselves if the machine has no IPv6 loopback.
+
+## Manual testing recipes
 
 How each Phase 0 fix was checked.
 
