@@ -266,6 +266,7 @@ Examples:
             banner_timeout=config.get("banner_timeout"),
             cve_timeout=config.get("cve_timeout"),
             cve_workers=config.get("cve_workers"),
+            nvd_api_key=config.get("nvd_api_key"),
             debug=args.verbose,
         )
 
@@ -398,11 +399,12 @@ Examples:
 
                 print()
 
-        if not found:
-
-            print(
-                "No vulnerabilities found."
-            )
+        lookup_errors = [e for e in target.errors if e.stage == "cve_lookup"]
+        if lookup_errors:
+            for e in lookup_errors:
+                print(f"CVE lookup failed: {e.message}")
+        elif not found:
+            print("No vulnerabilities found.")
 
         print(
             "-" * 57

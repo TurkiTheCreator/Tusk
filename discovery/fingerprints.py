@@ -21,6 +21,8 @@ class Fingerprint:
     product: str
     version_pattern: str
     confidence: float = 0.5
+    nvd_vendor: str = ""   # vendor as it appears in the NVD CPE dictionary
+    nvd_product: str = ""  # product as it appears in the NVD CPE dictionary
     # Optional normalization of the extracted version string.
     version_normalizer: Optional[Callable[[str], str]] = None
     # Compiled regex for performance.
@@ -56,6 +58,8 @@ FINGERPRINTS: Tuple[Fingerprint, ...] = (
         id="openssh",
         vendor="OpenSSH",
         product="OpenSSH",
+        nvd_vendor="openbsd",
+        nvd_product="openssh",
         version_pattern=r"OpenSSH[_/ ]([\d\.]+[\w\.]*)",
         confidence=0.95,
         version_normalizer=_strip_prefix,
@@ -64,6 +68,8 @@ FINGERPRINTS: Tuple[Fingerprint, ...] = (
         id="nginx",
         vendor="nginx",
         product="nginx",
+        nvd_vendor="f5",
+        nvd_product="nginx",
         version_pattern=r"nginx[/ ]([\d\.]+[\w\.]*)",
         confidence=0.9,
     ),
@@ -71,6 +77,8 @@ FINGERPRINTS: Tuple[Fingerprint, ...] = (
         id="apache",
         vendor="Apache",
         product="Apache",
+        nvd_vendor="apache",
+        nvd_product="http_server",
         version_pattern=r"Apache[/ ]([\d\.]+[\w\.]*)",
         confidence=0.9,
     ),
@@ -78,6 +86,8 @@ FINGERPRINTS: Tuple[Fingerprint, ...] = (
         id="vsftpd",
         vendor="vsFTPd",
         product="vsFTPd",
+        nvd_vendor="beasts",
+        nvd_product="vsftpd",
         version_pattern=r"vsFTPd[\s/ ]([\d\.]+[\w\.]*)",
         confidence=0.9,
     ),

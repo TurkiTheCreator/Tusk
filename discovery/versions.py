@@ -41,6 +41,8 @@ class VersionDetector:
                 "product": fp.product,
                 "version": extracted,
                 "vendor": fp.vendor,
+                "nvd_vendor": fp.nvd_vendor,
+                "nvd_product": fp.nvd_product,
                 "confidence": fp.confidence,
             }
 
@@ -65,6 +67,8 @@ class VersionDetector:
             "confidence": result.get("confidence", 0.0),
             # vendor is additive; downstream modules ignore unknown keys.
             "vendor": result.get("vendor"),
+            "nvd_vendor": result.get("nvd_vendor"),
+            "nvd_product": result.get("nvd_product"),
         }
 
     def detect_versions(self, banners):

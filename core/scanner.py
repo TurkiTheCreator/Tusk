@@ -15,9 +15,10 @@ from core.models import CandidateCVE, Finding, ScanError
 
 class Scanner:
 
-    def __init__(self, threads=100, port_timeout=0.5, banner_timeout=2, cve_timeout=10, cve_workers=10, debug=False):
+    def __init__(self, threads=100, port_timeout=0.5, banner_timeout=2, cve_timeout=10, cve_workers=10, nvd_api_key="", debug=False):
         # Note: fast port scan timeout improves speed, but keep banners/CVE slower for reliability.
         self.debug = debug
+        Logger.verbose = debug
         self.port_scanner = PortScanner(
             threads=threads,
             timeout=port_timeout,
@@ -31,7 +32,7 @@ class Scanner:
 
         self.cpe_generator = CPEGenerator()
 
-        self.cve_lookup = CVELookup(timeout=cve_timeout, max_workers=cve_workers)
+        self.cve_lookup = CVELookup(timeout=cve_timeout, max_workers=cve_workers, api_key=nvd_api_key)
 
 
     def run(self, target):
@@ -136,9 +137,20 @@ class Scanner:
                     Logger.error(traceback.format_exc())
 
             try:
-                target.cves = self.cve_lookup.lookup_all(
-                    target.cpes
-                )
+                results = self.cve_lookup.lookup_all(target.cpes)
+                target.cves = {}
+                for port, result in results.items():
+                    if result.ok:
+                        target.cves[port] = result.vulns
+                    else:
+                        target.errors.append(
+                            ScanError(
+                                stage="cve_lookup",
+                                message=f"port {port}: {result.error}",
+                                exception_type="LookupFailed",
+                            )
+                        )
+                        Logger.error(f"CVE lookup failed for port {port}: {result.error}")
             except Exception as e:
                 target.errors.append(
                     ScanError(
