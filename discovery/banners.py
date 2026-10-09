@@ -96,6 +96,7 @@ class BannerGrabber:
 
     def _probe_https(self, host: str, port: int) -> str:
         sock = None
+        tls_sock = None
         try:
             sock = self._create_connection(host, port)
 
@@ -117,17 +118,16 @@ class BannerGrabber:
             resp = self._read_until_close(tls_sock, max_bytes=8192)
             return resp.decode(errors="ignore").strip()
         finally:
-            if sock:
-                try:
-                    sock.close()
-                except Exception:
-                    pass
+            for s in (tls_sock, sock):
+                if s:
+                    try:
+                        s.close()
+                    except Exception:
+                        pass
 
     def _probe_ssh(self, host: str, port: int) -> str:
-        sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        sock = self._create_connection(host, port)
         try:
-            sock.settimeout(self.timeout)
-            sock.connect((host, port))
 
             # SSH server banner is typically sent immediately.
             # Read just the first banner bytes (bounded). Some SSH servers may
@@ -143,10 +143,8 @@ class BannerGrabber:
 
 
     def _probe_ftp(self, host: str, port: int) -> str:
-        sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        sock = self._create_connection(host, port)
         try:
-            sock.settimeout(self.timeout)
-            sock.connect((host, port))
 
             banner = self._read_until_close(sock, max_bytes=2048)
 
@@ -166,10 +164,8 @@ class BannerGrabber:
                 pass
 
     def _probe_smtp(self, host: str, port: int) -> str:
-        sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        sock = self._create_connection(host, port)
         try:
-            sock.settimeout(self.timeout)
-            sock.connect((host, port))
 
             banner = self._read_until_close(sock, max_bytes=2048)
 
@@ -189,10 +185,9 @@ class BannerGrabber:
                 pass
 
     def _probe_smtps_implicit_tls(self, host: str, port: int) -> str:
-        sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        sock = self._create_connection(host, port)
+        tls_sock = None
         try:
-            sock.settimeout(self.timeout)
-            sock.connect((host, port))
 
             context = ssl.create_default_context()
             context.check_hostname = False
@@ -211,53 +206,53 @@ class BannerGrabber:
 
             return banner.decode(errors="ignore").strip()
         finally:
-            try:
-                sock.close()
-            except Exception:
-                pass
+            for s in (tls_sock, sock):
+                if s:
+                    try:
+                        s.close()
+                    except Exception:
+                        pass
 
-    def grab_banner(self, host, port):
-        """Grab a protocol-aware banner for a single port."""
+    def _probe_passive(self, host: str, port: int) -> str:
+        """Connect and just listen: SSH/FTP/SMTP/etc. speak first."""
+        sock = None
         try:
-            # HTTP / HTTPS
-            if port == 80:
-                return self._probe_http(host, port)
-            if port == 443:
-                return self._probe_https(host, port)
-
-            # SSH
-            if port == 22:
-                return self._probe_ssh(host, port)
-
-            # FTP
-            if port == 21:
-                return self._probe_ftp(host, port)
-
-            # SMTP
-            if port == 25 or port == 587:
-                return self._probe_smtp(host, port)
-            if port == 465:
-                return self._probe_smtps_implicit_tls(host, port)
-
-            # Fallback: raw TCP banner
-            sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-            try:
-                sock.settimeout(self.timeout)
-                sock.connect((host, port))
-                banner = self._read_until_close(sock, max_bytes=2048)
-                return banner.decode(errors="ignore").strip()
-            finally:
+            sock = self._create_connection(host, port)
+            return self._read_until_close(sock, max_bytes=2048).decode(errors="ignore").strip()
+        finally:
+            if sock:
                 try:
                     sock.close()
                 except Exception:
                     pass
 
+    def _try(self, probe, host: str, port: int) -> str:
+        try:
+            return probe(host, port)
         except Exception as e:
-            # Preserve existing behavior: never raise.
-            # Preserve existing behavior: errors shouldn't crash scan.
-            # Logger only supports info/success/warning/error.
-            Logger.error(f"Banner grab error for {host}:{port} -> {e}")
+            # Closed/quiet ports are normal; only show with --verbose.
+            Logger.debug(f"{probe.__name__} {host}:{port} -> {e}")
             return ""
+
+    def grab_banner(self, host, port):
+        """Grab a banner by behavior: passive read, then HTTP, then TLS. Never raises."""
+        # Probes that must send something to get a full banner.
+        if port == 465:
+            return self._try(self._probe_smtps_implicit_tls, host, port)
+        if port in (25, 587):
+            return self._try(self._probe_smtp, host, port)
+        if port == 21:
+            return self._try(self._probe_ftp, host, port)
+
+        banner = self._try(self._probe_passive, host, port)
+        if banner:
+            return banner
+
+        banner = self._try(self._probe_http, host, port)
+        if banner.startswith("HTTP/"):
+            return banner
+
+        return self._try(self._probe_https, host, port)
 
     def grab_banners(self, host, ports):
         banners = {}

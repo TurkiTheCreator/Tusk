@@ -1,5 +1,7 @@
 class Logger:
 
+    verbose = False  # set by Scanner(debug=...)
+
     @staticmethod
     def info(message):
         print(f"[INF] {message}")
@@ -15,4 +17,8 @@ class Logger:
     @staticmethod
     def error(message):
         print(f"[ERR] {message}")
-        
+
+    @staticmethod
+    def debug(message):
+        if Logger.verbose:
+            print(f"[DBG] {message}")
